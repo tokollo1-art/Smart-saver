@@ -1,57 +1,102 @@
-📊 SA Smart Saver Optimizer
-Addressing the "Poverty Premium" through Data-Driven Simulation
-The SA Smart Saver Optimizer is a Java-based simulation engine designed to model and mitigate the "Poverty Premium" in the South African banking sector. In South Africa, low-income earners often lose a disproportionate percentage of their income (2%–5%) to banking fees due to "pay-as-you-transact" models. This tool analyzes user behavior against 2026 fee schedules to identify wealth erosion and suggest optimized financial strategies.
+SmartSaver
+A data engineering pipeline that analyses low-income earner bank transaction behaviour to identify wealth erosion points — fees, cash withdrawal patterns, and balance leaks — and generates bank-switching recommendations.
 
-✨ Core Features
-Persona-Based Simulation: Models diverse user behaviors, from cash-heavy "Rural Commuters" to "Digital-First Students".
+Project Overview
+SmartSaver ingests raw banking transaction data, transforms it through a medallion architecture (Bronze → Silver → Gold), and surfaces actionable insights for users earning R5,000 or less per month. The end goal is prescriptive: not just where money leaks, but what to do about it (e.g., switching from a R7.50/month account to a R0 student account).
 
-Multi-Bank Fee Engine: Utilizes a JSON database of 2026 fee schedules for major South African banks (e.g., FNB, Capitec, Nedbank).
+This project focuses on the data engineering pipeline — ingestion, cleaning, dimensional modelling, feature engineering, and orchestration — rather than the front-end product.
 
-Automated Optimization: Identifies "What-If" scenarios, such as consolidating ATM withdrawals or switching to "Cash-back at till" to reduce costs.
+Architecture
+text
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Source    │────▶│   Bronze    │────▶│   Silver    │────▶│    Gold     │
+│  (Raw CSV)  │     │  (Parquet)  │     │  (Modelled) │     │ (Analytics) │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+                           │                   │                   │
+                    Immutable raw        Cleaned, typed,      Erosion scores,
+                    + lineage metadata   star schema          recommendations
+Bronze — Raw data landed as-is in Parquet. Only additions are lineage columns (_ingested_at, _source_file). No cleaning, no filtering.
 
-Financial Inclusion Metrics: Tracks Cost-to-Income ratios to quantify the real-world impact of banking fees on low-balance accounts.
+Silver — Cleaned, typed, and modelled into a star schema. Fact and dimension tables. Wealth erosion features computed here.
 
-🛠️ Technical Stack
-Language: Java 17+ (utilizing BigDecimal for precision-critical financial calculations).
+Gold — Aggregated analytical tables. Per-account erosion scores, bank-switching recommendations, segment summaries.
 
-Data Format: JSON (via Jackson/Gson) for decoupled, easy-to-update fee schedules.
+Data Source
+Field	Detail
+Dataset	Cifer Fraud Detection Dataset (AF)
+Rows used	1,500,000 (part 1 of 8)
+Format	CSV → Parquet
+Key columns	step, type, amount, nameOrig, oldbalanceOrg, newbalanceOrig, nameDest
+The dataset simulates mobile money transactions. The oldbalanceOrg and newbalanceOrig columns allow direct computation of balance deltas — the foundation of the wealth erosion metric.
 
-Build Tool: Maven for dependency management and structured lifecycles.
+Download:
 
-Architecture: Modular design separating the Simulation Engine, the Fee Validator, and the Optimization Reporter.
+powershell
+hf download CiferAI/Cifer-Fraud-Detection-Dataset-AF --repo-type dataset --include "Cifer-Fraud-Detection-Dataset-AF-part-1-8.csv" --local-dir ./data
+Project Structure
+text
+Smart-saver/
+├── data/                          # Raw downloads (git-ignored)
+├── bronze/                        # Raw Parquet + lineage (git-ignored)
+├── silver/                        # Cleaned, modelled tables (git-ignored)
+├── gold/                          # Analytical outputs (git-ignored)
+├── scripts/
+│   ├── 01_bronze_ingest.py        # Ingest raw CSV → Bronze Parquet
+│   ├── 02_silver_transform.py     # Clean, model, engineer features
+│   └── 03_gold_aggregate.py       # Aggregate to analytical tables
+├── notebooks/                     # Analysis and visualisation
+├── .gitignore
+├── requirements.txt
+└── README.md
+Getting Started
+Prerequisites
+Python 3.12+ (3.14 tested)
 
-🚀 Getting Started
-Clone the Repository:
+pip
 
-Bash
-git clone https://github.com/wtc/sa-smart-saver.git
-Configuration:
-Update src/main/resources/fees_2026.json with the latest bank fee data if necessary.
+Installation
+powershell
+pip install -r requirements.txt
+requirements.txt:
 
-Run the Optimizer:
+text
+pandas
+pyarrow
+duckdb
+Run the Pipeline
+powershell
+# Step 1: Ingest raw data into Bronze
+python scripts/01_bronze_ingest.py
 
-Bash
-mvn clean install
-java -jar target/smart-saver-optimizer.jar
-📂 Project Structure
-Plaintext
-src/main/java/com/fintech/optimizer/
-├── engine/
-│   ├── SimulationEngine.java   # Processes user transaction batches
-│   └── OptimizerLogic.java      # Applies "What-If" logic to find savings
-├── model/
-│   ├── UserProfile.java        # Defines income level and habit personas
-│   └── Transaction.java        # Represents individual financial actions
-└── storage/
-    └── FeeLoader.java          # Parses JSON fee schedules into Java objects
-💅 Why This Matters
-This project aligns with the National Treasury's 2023 Financial Inclusion Policy, which advocates for reducing cash-handling fees and fostering digital ecosystems. It demonstrates an ability to translate complex socioeconomic research into functional, scalable software.
-Optimizing for a more inclusive financial future. 🇿🇦
-Research Credits:
+# Step 2: Transform into Silver
+python scripts/02_silver_transform.py
 
-National Treasury 2023 Policy Framework: An Inclusive Financial Sector For All.
+# Step 3: Aggregate into Gold
+python scripts/03_gold_aggregate.py
+Design Decisions
+Why Parquet over CSV?
+Columnar storage, built-in compression, and schema preservation. A 138 MB CSV becomes ~45 MB Parquet, and downstream tools (DuckDB, pandas, Spark) read it faster because types are known upfront.
 
-Solidarity Research Institute: Annual Banking Charges Reports.
+Why a medallion architecture?
+Separating Bronze/Silver/Gold means each layer has one job. If Silver logic has a bug, re-run Silver without re-downloading. If Gold needs a new metric, it reads from stable Silver tables. This is the industry-standard pattern for analytical pipelines.
 
-CGAP: Mobile Phone Banking and Low-Income Customers.# Smart-saver
-The Smart Saver Optimizer is a Java-based simulation engine that models the "Poverty Premium" in South African banking. It analyzes transaction data against 2026 fee schedules to identify wealth erosion in low-balance accounts. By optimizing for digital migration and behavior shifts, it generates actionable strategies for financial inclusion.
+Why lineage columns in Bronze?
+_ingested_at and _source_file let you trace any row back to its origin file and ingestion time. Essential for debugging and auditing.
+
+Why index=False in to_parquet()?
+Prevents pandas from writing its internal row index as an extra column, which would pollute the schema for every downstream consumer.
+
+Limitations & Future Work
+Synthetic data — The Cifer dataset simulates mobile money, not real South African bank transactions. Real integration would require Open Banking APIs (e.g., Stitch) with user consent.
+
+Static fee table — Bank fee comparisons use a manually curated lookup table. Production would require scheduled scraping or a bank partnership.
+
+No live pipeline — Orchestration is script-based. A production version would use Prefect, Airflow, or Dagster with scheduling and retries.
+
+No user-facing app — This project delivers the data engineering foundation, not the end-user product.
+
+Author
+Zoe — Data Engineering Project, September 2026
+
+License
+This project is for academic purposes. The Cifer dataset is subject to its own license terms on Hugging Face.
