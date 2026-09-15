@@ -1,0 +1,21 @@
+# Data files — too large for git
+data/
+bronze/
+silver/
+gold/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
