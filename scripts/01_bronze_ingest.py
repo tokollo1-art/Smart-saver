@@ -1,7 +1,10 @@
 """
 SmartSaver - Bronze Layer
-"""Ingest raw Cifer transaction CSV into Bronze Parquet with lineage metadata."""
+
+Ingest raw Cifer transaction CSV into Bronze pickle format with lineage metadata.
+Fallback to pickle because Windows Smart App Control blocks pyarrow's Parquet DLL.
 """
+
 
 import pandas as pd
 import os
@@ -21,8 +24,8 @@ print(f"Ingesting: {raw_path}")
 df = pd.read_csv(raw_path)
 df["_ingested_at"] = datetime.now(timezone.utc).isoformat()
 df["_source_file"] = raw_files[0]
-bronze_path = os.path.join(BRONZE_DIR, "transactions_raw.parquet")
-df.to_parquet(bronze_path, index=False)
+bronze_path = os.path.join(BRONZE_DIR, "transactions_raw.pkl")
+df.to_pickle(bronze_path)
 
 print(f"Rows ingested: {len(df):,}")
 print(f"Columns: {list(df.columns)}")
