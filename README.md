@@ -141,14 +141,6 @@ Precedent: Discovery Bank uses transaction data to build detailed client profile
 
 Regulatory path: South Africa's Open Finance framework (FSCA position paper, Reserve Bank support) is maturing, with API standards targeted for March 2026. POPIA's prior-authorisation regime (Chapter 6) applies when combining datasets across responsible parties — the safe structure is B2B2C.
 
-Proposed model:
-
-Phase 1 (proof): Publish the fee-comparison methodology and findings. Establish credibility.
-
-Phase 2 (B2B2C): Partner with employers, unions, or financial wellness programmes. They pay for analytics; employees receive recommendations free.
-
-Phase 3 (Open Banking): Once consent frameworks mature, build the user-facing product. Users link accounts via Open Banking API; banks pay for aggregated, anonymised insight.
-
 The engine exists. The remaining work is access to real transaction data and regulatory clearance.
 
 Limitations
@@ -156,6 +148,8 @@ Synthetic data. Cifer simulates mobile money, not SA retail banking. Real integr
 
 Static fee schedule. Bank rates are hard-coded from 2026 public pricing. Production would require scheduled scraping or bank partnership.
 
+
+WTC-GR5NDYRA
 No income data. The dataset has no income field. Behaviour-based segmentation is a proxy.
 
 Script-based orchestration. No scheduler or retry logic. Production would use Prefect, Airflow, or Dagster.
